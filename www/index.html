@@ -507,6 +507,23 @@ $(document).ready(function() {
 			</tr>
 		</table>
 	</div>
+	<div id="itho_popup" class="ui-popup ui-body-b ui-overlay-shadow ui-corner-all pop">
+		<div class="ui-close" onclick="CloseIthoPopup()"></div>
+		<table class="display" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td>
+					<center>
+					<br><br>
+					<button class="btn btn-info" onclick="IthoSendCommand('1')">1</button><br>
+					<button class="btn btn-info" onclick="IthoSendCommand('2')">2</button><br>
+					<button class="btn btn-info" onclick="IthoSendCommand('3')">3</button><br>
+					<button data-i18n="Timer" class="btn btn-info" onclick="IthoSendCommand('timer')">Timer</button><br>
+					</center>
+					<br>
+				</td>
+			</tr>
+		</table>
+	</div>
 	<div id="globaldaylog" style="display:none;">
 	  <h2 data-i18n="Day">Day</h2>
 	  <div id="globaldaygraph" style="height: 300px;"></div>
@@ -553,6 +570,25 @@ $(document).ready(function() {
 				</td>
 				<td align="right">
 					<a class="btnstyle3" id="clearlog" onclick="ClearTextLog();" data-i18n="Clear">Clear</a>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<div id="scenelog" style="display:none;">
+		<table class="display" id="scenetable" border="0" cellpadding="0" cellspacing="0" width="100%">
+				<thead>
+						<tr>
+								<th width="140" align="left" data-i18n="Date">Date</th>
+								<th data-i18n="Data">Data</th>
+						</tr>
+				</thead>
+		</table>
+		<table id="updelclr" border="0" cellpadding="0" cellspacing="0" width="100%">
+			<tr>
+				<td>
+				</td>
+				<td align="right">
+					<a class="btnstyle3" id="clearlog" onclick="ClearSceneLog();" data-i18n="Clear">Clear</a>
 				</td>
 			</tr>
 		</table>

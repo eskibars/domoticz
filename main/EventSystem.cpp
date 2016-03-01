@@ -1956,7 +1956,7 @@ bool CEventSystem::parseBlocklyActions(const std::string &Actions, const std::st
 			else {
 				std::string devNameNoQuotes = deviceName.substr(1, deviceName.size() - 2);
 				if (devNameNoQuotes == "SendNotification") {
-					std::string subject(""), body(""), priority("0"), sound("");
+					std::string subject, body, priority("0"), sound;
 					std::vector<std::string> aParam;
 					StringSplit(doWhat, "#", aParam);
 					subject = body = aParam[0];
@@ -1984,7 +1984,7 @@ bool CEventSystem::parseBlocklyActions(const std::string &Actions, const std::st
 					actionsDone = true;
 				}
 				else if (devNameNoQuotes == "SendEmail") {
-					std::string subject(""), body(""), to("");
+					std::string subject, body, to;
 					std::vector<std::string> aParam;
 					StringSplit(doWhat, "#", aParam);
 					if (aParam.size() !=3 )
@@ -2639,8 +2639,17 @@ void CEventSystem::EvaluateLua(const std::string &reason, const std::string &fil
 		lua_rawset(lua_state, -3);
 	}
 	lua_setglobal(lua_state, "otherdevices_svalues");
+	lua_createtable(lua_state, (int)m_devicestates.size(), 0);
+	typedef std::map<unsigned long long, _tDeviceStatus>::iterator it_type;
+	for (it_type iterator = m_devicestates.begin(); iterator != m_devicestates.end(); ++iterator)
+	{
+		_tDeviceStatus sitem = iterator->second;
+		lua_pushstring(lua_state, sitem.deviceName.c_str());
+		lua_pushnumber(lua_state, (lua_Number)sitem.ID);
+		lua_rawset(lua_state, -3);
+	}
+	lua_setglobal(lua_state, "otherdevices_idx");
 	devicestatesMutexLock2.unlock();
-
 	lua_createtable(lua_state, (int)m_uservariables.size(), 0);
 
 	typedef std::map<unsigned long long, _tUserVariable>::iterator it_var;
@@ -2853,8 +2862,8 @@ bool CEventSystem::processLuaCommand(lua_State *lua_state, const std::string &fi
 	if (std::string(lua_tostring(lua_state, -2)) == "SendNotification")
 	{
 		std::string luaString = lua_tostring(lua_state, -1);
-		std::string subject(""), body(""), priority("0"), sound("");
-		std::string extraData("");
+		std::string subject, body, priority("0"), sound;
+		std::string extraData;
 		std::vector<std::string> aParam;
 		StringSplit(luaString, "#", aParam);
 		subject = body = aParam[0];
@@ -2875,7 +2884,7 @@ bool CEventSystem::processLuaCommand(lua_State *lua_state, const std::string &fi
 	}
 	else if (std::string(lua_tostring(lua_state, -2)) == "SendEmail") {
 		std::string luaString = lua_tostring(lua_state, -1);
-		std::string subject(""), body(""), to("");
+		std::string subject, body, to;
 		std::vector<std::string> aParam;
 		StringSplit(luaString, "#", aParam);
 		if (aParam.size() != 3)
@@ -3031,7 +3040,7 @@ void CEventSystem::UpdateDevice(const std::string &DevParams)
 				break;
 			}
 		case pTypeGeneral:
-			if ((devType == pTypeGeneral) && (subType != sTypeTextStatus) && (subType != sTypeAlert) && (subType != sTypeSwitch))
+			if ((devType == pTypeGeneral) && (subType != sTypeTextStatus) && (subType != sTypeAlert))
 			{
 				break;
 			}
@@ -3041,6 +3050,7 @@ void CEventSystem::UpdateDevice(const std::string &DevParams)
 		case pTypeLighting4:
 		case pTypeLighting5:
 		case pTypeLighting6:
+		case pTypeFan:
 		case pTypeLimitlessLights:
 		case pTypeSecurity1:
 		case pTypeSecurity2:
@@ -3216,7 +3226,7 @@ bool CEventSystem::ScheduleEvent(int deviceID, std::string Action, bool isScene,
 		CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByType(HTYPE_Kodi);
 		if (pBaseHardware != NULL)
 		{
-			CKodi			*pHardware = (CKodi*)pBaseHardware;
+			CKodi			*pHardware = reinterpret_cast<CKodi*>(pBaseHardware);
 			std::string		sPlayList = sParams;
 			size_t			iLastSpace = sParams.find_last_of(' ', sParams.length());
 
@@ -3235,7 +3245,7 @@ bool CEventSystem::ScheduleEvent(int deviceID, std::string Action, bool isScene,
 		{
 			pBaseHardware = m_mainworker.GetHardwareByType(HTYPE_LogitechMediaServer);
 			if (pBaseHardware == NULL) return false;
-			CLogitechMediaServer *pHardware = (CLogitechMediaServer*)pBaseHardware;
+			CLogitechMediaServer *pHardware = reinterpret_cast<CLogitechMediaServer*>(pBaseHardware);
 
 			int iPlaylistID = pHardware->GetPlaylistRefID(Action.substr(14).c_str());
 			if (iPlaylistID == 0) return false;
@@ -3251,7 +3261,7 @@ bool CEventSystem::ScheduleEvent(int deviceID, std::string Action, bool isScene,
 		CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByType(HTYPE_Kodi);
 		if (pBaseHardware != NULL)
 		{
-			CKodi			*pHardware = (CKodi*)pBaseHardware;
+			CKodi			*pHardware = reinterpret_cast<CKodi*>(pBaseHardware);
 			if (sParams.length() > 0)
 			{
 				_level = atoi(sParams.c_str());
@@ -3266,7 +3276,7 @@ bool CEventSystem::ScheduleEvent(int deviceID, std::string Action, bool isScene,
 		CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByType(HTYPE_Kodi);
 		if (pBaseHardware != NULL)
 		{
-			CKodi	*pHardware = (CKodi*)pBaseHardware;
+			CKodi	*pHardware = reinterpret_cast<CKodi*>(pBaseHardware);
 			pHardware->SetExecuteCommand(deviceID, sParams);
 		}
 
@@ -3650,7 +3660,7 @@ namespace http {
 						if (_levents.find(Name) != _levents.end())
 						{
 							//Duplicate event name, add the ID
-							std::stringstream szQuery("");
+							std::stringstream szQuery;
 							szQuery << Name << " (" << ID << ")";
 							Name = szQuery.str();
 						}
@@ -3707,6 +3717,10 @@ namespace http {
 					return;
 
 				int ii = 0;
+
+				std::string sEditorTheme = "ace/theme/xcode";
+				m_sql.GetPreferencesVar("ScriptEditorTheme", sEditorTheme);
+				root["editortheme"] = sEditorTheme;
 
 				result = m_sql.safe_query("SELECT ID, Name, XMLStatement, Status, Interpreter, Type FROM EventMaster WHERE (ID=='%q')",
 					idx.c_str());
@@ -3804,6 +3818,14 @@ namespace http {
 						_log.Log(LOG_ERROR, "Error writing event actions to database!");
 					}
 					else {
+						std::string sNewEditorTheme = request::findValue(&req, "editortheme");
+						std::string sOldEditorTheme = "ace/theme/xcode";
+						m_sql.GetPreferencesVar("ScriptEditorTheme", sOldEditorTheme);
+						if (sNewEditorTheme.length() && (sNewEditorTheme != sOldEditorTheme))
+						{
+							m_sql.UpdatePreferencesVar("ScriptEditorTheme", sNewEditorTheme);
+						}
+
 						if (interpreter == "Blockly") {
 							const Json::Value array = jsonRoot["eventlogic"];
 							for (int index = 0; index < (int)array.size(); ++index)

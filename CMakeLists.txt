@@ -10,10 +10,11 @@ IF(USE_BUILTIN_LUA)
     DEFINITION LUA_LIBRARIES)
 ELSE(USE_BUILTIN_LUA)
   find_package(PkgConfig)
-  pkg_check_modules(LUA lua>=5.2)
+  pkg_search_module(LUA lua5.2>=5.2 lua>=5.2 lua-5.2)
   IF(LUA_FOUND)
     INCLUDE_DIRECTORIES(${LUA_INCLUDE_DIRS})
     add_definitions(-DWITH_EXTERNAL_LUA)
+    link_directories(${LUA_LIBRARY_DIRS})
   ELSE(LUA_FOUND)
     MESSAGE(FATAL_ERROR "LUA not found but USE_BUILTIN_LUA=NO")
   ENDIF(LUA_FOUND)
@@ -23,22 +24,21 @@ option(USE_BUILTIN_MQTT "Use builtin Mosquitto library" YES)
 IF(USE_BUILTIN_MQTT)
   message(STATUS "Using builtin Mosquitto library")
   add_subdirectory (MQTT)
-  get_directory_property (CMAKE_MQTT_INCLUDES DIRECTORY MQTT
-      DEFINITION MQTT_INCLUDE_DIRS)
-  get_directory_property (CMAKE_MQTT_LIBRARIES DIRECTORY MQTT
+  get_directory_property (MQTT_LIBRARIES DIRECTORY MQTT
       DEFINITION MQTT_LIBRARIES)
   add_definitions(-DBUILTIN_MQTT)
 ELSE(USE_BUILTIN_MQTT)
-  find_path(CMAKE_MQTT_INCLUDE NAMES mosquittopp.h)
-  IF(CMAKE_MQTT_INCLUDE)
-     message(STATUS "Found mosquitto mosquittopp.h at: ${CMAKE_MQTT_INCLUDE}")
-     find_library(CMAKE_MQTT_LIBRARIES NAMES libmosquitto.so)
-     IF(CMAKE_MQTT_LIBRARIES)
-        message(STATUS "Found mosquitto lib at: ${CMAKE_MQTT_LIBRARIES}") 
-     ENDIF(CMAKE_MQTT_LIBRARIES)
-  ELSE(CMAKE_MQTT_INCLUDE)
+  find_path(MQTT_INCLUDE_DIRS NAMES mosquittopp.h)
+  IF(MQTT_INCLUDE_DIRS)
+    message(STATUS "Found mosquittopp.h at: ${MQTT_INCLUDE_DIRS}")
+    find_library(MQTT_LIBRARIES NAMES libmosquittopp.so)
+    IF(MQTT_LIBRARIES)
+      message(STATUS "Found libmosquittopp at: ${MQTT_LIBRARIES}")
+    ENDIF(MQTT_LIBRARIES)
+    INCLUDE_DIRECTORIES(${MQTT_INCLUDE_DIRS})
+  ELSE(MQTT_INCLUDE_DIRS)
      meessage(FATAL_ERROR "Mosquitto includes or library cannot be found, and you ask to NOT use builtin")
-  ENDIF(CMAKE_MQTT_INCLUDE)
+  ENDIF(MQTT_INCLUDE_DIRS)
 ENDIF(USE_BUILTIN_MQTT)
 
 option(USE_BUILTIN_SQLITE "Use builtin sqlite library" YES)
@@ -111,7 +111,7 @@ MACRO(ADD_PRECOMPILED_HEADER _targetName _input)
   ENDIF(MSVC)
 
   IF(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-switch -Wno-parentheses-equality -Wno-deprecated-declarations -Wno-tautological-compare -Wno-unused-value -Wno-absolute-value -Wno-comment -Wno-unsequenced -Wno-logical-op-parentheses -Wno-literal-conversion")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-switch -Wno-parentheses-equality -Wno-deprecated-declarations -Wno-tautological-compare -Wno-unused-value -Wno-comment -Wno-unsequenced -Wno-logical-op-parentheses -Wno-literal-conversion")
   ENDIF()
 
   IF(CMAKE_COMPILER_IS_GNUCXX)
@@ -153,12 +153,27 @@ FIND_PROGRAM(GIT_EXECUTABLE git
 
 MACRO(Gitversion_GET_REVISION dir variable)
   EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} rev-list HEAD --count
+    WORKING_DIRECTORY ${dir}
     OUTPUT_VARIABLE ${variable}
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 ENDMACRO(Gitversion_GET_REVISION)
 
-Gitversion_GET_REVISION(. ProjectRevision)
-MATH(EXPR ProjectRevision "${ProjectRevision}+2107")
+Gitversion_GET_REVISION("${CMAKE_SOURCE_DIR}" ProjectRevision)
+IF(NOT ProjectRevision)
+  MESSAGE(STATUS "Failed to get ProjectRevision from git")
+  IF(EXISTS ${CMAKE_SOURCE_DIR}/appversion.default)
+    MESSAGE(STATUS "Read ProjectRevision from appversion.default")
+    FILE(STRINGS ${CMAKE_SOURCE_DIR}/appversion.default AppVersionContent)
+    LIST(GET AppVersionContent 0 AppVersionContent)
+    STRING(REPLACE " " ";" AppVersionContent ${AppVersionContent})
+    LIST(GET AppVersionContent 2 ProjectRevision)
+  ELSE(EXISTS ${CMAKE_SOURCE_DIR}/appversion.default)
+    MESSAGE(STATUS "No appversion.default, set ProjectRevision to 0")
+    set (ProjectRevision 0)
+  ENDIF(EXISTS ${CMAKE_SOURCE_DIR}/appversion.default)
+ELSE(NOT ProjectRevision)
+  MATH(EXPR ProjectRevision "${ProjectRevision}+2107")
+ENDIF(NOT ProjectRevision)
 MESSAGE(STATUS "Compiling Revision #${ProjectRevision}")
 
 # The version number.
@@ -182,12 +197,15 @@ domoticz_SRCS
 main/stdafx.cpp
 main/CmdLine.cpp
 main/Camera.cpp
+main/DataPush.cpp
 main/domoticz.cpp
 main/EventSystem.cpp
 main/Helper.cpp
+main/HttpPush.cpp
 main/localtime_r.cpp
 main/Logger.cpp
 main/mainworker.cpp
+main/Push.cpp
 main/RFXNames.cpp
 main/Scheduler.cpp
 main/SQLHelper.cpp
@@ -195,9 +213,6 @@ main/SunRiseSet.cpp
 main/WebServer.cpp
 main/WebServerHelper.cpp
 main/WindCalculation.cpp
-main/Push.cpp
-main/DataPush.cpp
-main/HttpPush.cpp
 httpclient/HTTPClient.cpp
 httpclient/UrlEncode.cpp
 hardware/1Wire.cpp
@@ -208,7 +223,6 @@ hardware/1Wire/1WireForWindows.cpp
 hardware/AnnaThermostat.cpp
 hardware/ASyncSerial.cpp
 hardware/ASyncTCP.cpp
-hardware/BMP085.cpp
 hardware/Comm5TCP.cpp
 hardware/csocket.cpp
 hardware/CurrentCostMeterBase.cpp
@@ -230,6 +244,7 @@ hardware/Gpio.cpp
 hardware/GpioPin.cpp
 hardware/HardwareMonitor.cpp
 hardware/HarmonyHub.cpp
+hardware/I2C.cpp
 hardware/ICYThermostat.cpp
 hardware/KMTronicBase.cpp
 hardware/KMTronic433.cpp
@@ -247,6 +262,8 @@ hardware/MySensorsTCP.cpp
 hardware/NefitEasy.cpp
 hardware/Nest.cpp
 hardware/Netatmo.cpp
+hardware/OpenWebNet.cpp
+hardware/openwebnet/bt_openwebnet.cpp
 hardware/OpenZWave.cpp
 hardware/openzwave/control_panel/ozwcp.cpp
 hardware/openzwave/control_panel/zwavelib.cpp
@@ -275,8 +292,6 @@ hardware/SBFSpot.cpp
 hardware/serial/serial.cpp
 hardware/serial/impl/unix.cpp
 hardware/SolarEdgeAPI.cpp
-hardware/SolarEdgeBase.cpp
-hardware/SolarEdgeTCP.cpp
 hardware/SolarMaxTCP.cpp
 hardware/TCPProxy/tcpproxy_server.cpp
 hardware/TE923.cpp
@@ -291,7 +306,6 @@ hardware/WOL.cpp
 hardware/Wunderground.cpp
 hardware/YouLess.cpp
 hardware/ZWaveBase.cpp
-MQTT/mosquittopp.cpp
 notifications/NotificationBase.cpp
 notifications/NotificationEmail.cpp
 notifications/NotificationGCM.cpp
@@ -417,7 +431,7 @@ IF(CURL_FOUND)
   MESSAGE(STATUS "Curl libraries found at: ${CURL_LIBRARIES}")
   MESSAGE(STATUS "Curl includes found at: ${CURL_INCLUDE_DIRS}")
   INCLUDE_DIRECTORIES(${CURL_INCLUDE_DIRS})
-  add_definitions(-DNS_ENABLE_SSL)
+  add_definitions(-DWWW_ENABLE_SSL)
 else()
   MESSAGE(FATAL_ERROR "cURL not found on your system, see install.txt how to get them installed. (for example 'sudo apt-get install curl libcurl4-openssl-dev')")
 ENDIF(CURL_FOUND)
@@ -451,7 +465,7 @@ if(NOT OPENSSL_FOUND)
     target_link_libraries(domoticz ${MD_LIBRARY})
   endif(MD_LIBRARY)
 else()
-  add_definitions(-DNS_ENABLE_SSL)
+  add_definitions(-DWWW_ENABLE_SSL)
   include_directories(${OPENSSL_INCLUDE_DIR})
   target_link_libraries(domoticz ${OPENSSL_LIBRARIES})
 endif()
@@ -543,26 +557,37 @@ ENDIF(RaspberryPi)
 
 find_path(TELLDUSCORE_INCLUDE NAMES telldus-core.h)
 if (TELLDUSCORE_INCLUDE)
-  message(STATUS "Found telldus-core (telldus-core.h), adding tellstick support")
-  target_link_libraries (domoticz telldus-core)
-  add_definitions(-DWITH_TELLDUSCORE)
+  message(STATUS "Found telldus-core (telldus-core.h) at : ${TELLDUSCORE_INCLUDE}")
+  find_library(TELLDUS_LIBRARIES NAMES libtelldus-core.so)
+  if(TELLDUS_LIBRARIES)
+    message(STATUS "Found libtelldus-core at : ${TELLDUS_LIBRARIES}, adding telldus support")
+    add_definitions(-DWITH_TELLDUSCORE)
+  endif(TELLDUS_LIBRARIES)
 else()
   message(STATUS "Not found telldus-core (telldus-core.h), not adding tellstick support")
 endif (TELLDUSCORE_INCLUDE)
 
-IF(USE_BUILTIN_MQTT)
-  IF(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_link_libraries(domoticz ${Boost_LIBRARIES} ${ZLIB_LIBRARIES} ${CURL_LIBRARIES} pthread ${LUA_LIBRARIES} mqtt ${SQLite_LIBRARIES} ${CMAKE_DL_LIBS})
+# Under FreeBSD sys/sysinfo?h exist using a separate pkg
+IF(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+  find_path(SYSINFO_INCLUDE NAMES sys/sysinfo.h)
+  if (SYSINFO_INCLUDE)
+     message(STATUS "Found sys/sysinfo.h at : ${SYSINFO_INCLUDE}")
+     find_library(SYSINFO_LIBRARIES NAMES libsysinfo.so)
+     if(SYSINFO_LIBRARIES)
+       message(STATUS "Found libsysinfo.so at : ${SYSINFO_LIBRARIES}")
+     else(SYSINFO_LIBRARIES)
+       message(FATAL_ERROR "Cannot find libsysinfo, please install it with 'pkg install libsysinfo'")
+     endif(SYSINFO_LIBRARIES)
   else()
-    target_link_libraries(domoticz -lrt ${Boost_LIBRARIES} ${ZLIB_LIBRARIES} ${CURL_LIBRARIES} -LXXXPREFIXXX/lib pthread ${LUA_LIBRARIES} mqtt ${SQLite_LIBRARIES} ${CMAKE_DL_LIBS})
-  ENDIF()
-ELSE(USE_BUILTIN_MQTT)
-  IF(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_link_libraries(domoticz ${Boost_LIBRARIES} ${ZLIB_LIBRARIES} ${CURL_LIBRARIES} pthread ${LUA_LIBRARIES} -lmosquitto ${SQLite_LIBRARIES} ${CMAKE_DL_LIBS})
-  else()
-    target_link_libraries(domoticz -lrt ${Boost_LIBRARIES} ${ZLIB_LIBRARIES} ${CURL_LIBRARIES} -LXXXPREFIXXX/lib pthread ${LUA_LIBRARIES} -lmosquitto ${SQLite_LIBRARIES} ${CMAKE_DL_LIBS})
-  ENDIF()
-ENDIF(USE_BUILTIN_MQTT)
+     message(FATAL_ERROR "Cannot find sysinfo.h, please install it with 'pkg install libsysinfo'")
+  endif()
+ENDIF()
+
+IF(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  target_link_libraries(domoticz ${Boost_LIBRARIES} ${ZLIB_LIBRARIES} ${CURL_LIBRARIES} pthread ${LUA_LIBRARIES} ${MQTT_LIBRARIES} ${SQLite_LIBRARIES} ${CMAKE_DL_LIBS} ${TELLDUS_LIBRARIES})
+else()
+  target_link_libraries(domoticz -lrt ${Boost_LIBRARIES} ${ZLIB_LIBRARIES} ${CURL_LIBRARIES} pthread ${LUA_LIBRARIES} ${MQTT_LIBRARIES} ${SQLite_LIBRARIES} ${CMAKE_DL_LIBS} ${TELLDUS_LIBRARIES} ${SYSINFO_LIBRARIES})
+ENDIF()
 
 ADD_PRECOMPILED_HEADER(domoticz "main/stdafx.h")
 
@@ -607,7 +632,9 @@ SET(CPACK_DEBIAN_ARCHITECTURE ${CMAKE_SYSTEM_PROCESSOR})
 
 INCLUDE(CPack)
 
-set(CMAKE_INSTALL_PREFIX "/opt/${CPACK_PACKAGE_NAME}" CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
+IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "/opt/${CPACK_PACKAGE_NAME}" CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
+ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
 install(TARGETS domoticz DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/www DESTINATION ${CMAKE_INSTALL_PREFIX} USE_SOURCE_PERMISSIONS)
