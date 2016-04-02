@@ -77,7 +77,7 @@ define(['app'], function (app) {
                      }
                 });
             }
-            else if (text.indexOf("USB") >= 0)
+            else if (text.indexOf("USB") >= 0 || text.indexOf("OpenZWave") >= 0)
             {
                 var Mode1 = "0";
                 var serialport=$("#hardwarecontent #divserial #comboserialport option:selected").text();
@@ -609,7 +609,7 @@ define(['app'], function (app) {
                      }
                 });
             }
-            else if (text.indexOf("USB") >= 0)
+            else if (text.indexOf("USB") >= 0 || text.indexOf("OpenZWave") >= 0)
             {
                 var Mode1 = "0";
                 var serialport=$("#hardwarecontent #divserial #comboserialport option:selected").text();
@@ -3967,7 +3967,7 @@ define(['app'], function (app) {
                 $("#hardwarecontent #divlogin").hide();
                 $("#hardwarecontent #divunderground").hide();
             }
-            else if (text.indexOf("USB") >= 0)
+            else if (text.indexOf("USB") >= 0 || text.indexOf("OpenZWave") >= 0)
             {
                 if (text.indexOf("MySensors") >= 0)
                 {
