@@ -1,6 +1,7 @@
 *.orig
 msbuild
-domoticz.db
+*.db
+*.bak
 appversion.h
 appversion.h.txt
 Makefile
@@ -11,8 +12,10 @@ CMakeCache.txt
 domoticz
 stdafx.h.gch
 .DS_Store
+.AppleDouble
 Config/OZW_Log.txt
 Config/zwscene.xml
 backups/
 domocookie.txt
 domoticz.exe
+/Config/zwcfg_*.xml
