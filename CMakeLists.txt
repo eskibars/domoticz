@@ -37,7 +37,7 @@ ELSE(USE_BUILTIN_MQTT)
     ENDIF(MQTT_LIBRARIES)
     INCLUDE_DIRECTORIES(${MQTT_INCLUDE_DIRS})
   ELSE(MQTT_INCLUDE_DIRS)
-     meessage(FATAL_ERROR "Mosquitto includes or library cannot be found, and you ask to NOT use builtin")
+     message(FATAL_ERROR "Mosquitto includes or library cannot be found, and you ask to NOT use builtin")
   ENDIF(MQTT_INCLUDE_DIRS)
 ENDIF(USE_BUILTIN_MQTT)
 
@@ -209,6 +209,7 @@ main/Push.cpp
 main/RFXNames.cpp
 main/Scheduler.cpp
 main/SQLHelper.cpp
+main/LuaHandler.cpp
 main/SunRiseSet.cpp
 main/WebServer.cpp
 main/WebServerHelper.cpp
@@ -264,6 +265,7 @@ hardware/MySensorsTCP.cpp
 hardware/NefitEasy.cpp
 hardware/Nest.cpp
 hardware/Netatmo.cpp
+hardware/HttpPoller.cpp
 hardware/OpenWebNet.cpp
 hardware/openwebnet/bt_openwebnet.cpp
 hardware/OpenZWave.cpp
@@ -285,6 +287,7 @@ hardware/Rego6XXSerial.cpp
 hardware/RFLinkBase.cpp
 hardware/RFLinkSerial.cpp
 hardware/RFLinkTCP.cpp
+hardware/RFXBase.cpp
 hardware/RFXComSerial.cpp
 hardware/RFXComTCP.cpp
 hardware/S0MeterBase.cpp
