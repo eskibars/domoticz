@@ -18,7 +18,7 @@ namespace http {
 	namespace server {
 		class cWebem;
 		struct _tWebUserPassword;
-class CWebServer : public session_store
+class CWebServer : public session_store, public boost::enable_shared_from_this<CWebServer>
 {
 	typedef boost::function< void(WebEmSession & session, const request& req, Json::Value &root) > webserver_response_function;
 public:
@@ -57,11 +57,12 @@ public:
 	void SetOpenThermSettings(WebEmSession & session, const request& req, std::string & redirect_uri);
 	void Cmd_SendOpenThermCommand(WebEmSession & session, const request& req, Json::Value &root);
 
-	void SetP1USBType(WebEmSession & session, const request& req, std::string & redirect_uri);
 	void ReloadPiFace(WebEmSession & session, const request& req, std::string & redirect_uri);
 	void RestoreDatabase(WebEmSession & session, const request& req, std::string & redirect_uri);
 	void SBFSpotImportOldData(WebEmSession & session, const request& req, std::string & redirect_uri);
 	void SetCurrentCostUSBType(WebEmSession & session, const request& req, std::string & redirect_uri);
+
+	void EventCreate(WebEmSession & session, const request& req, std::string & redirect_uri);
 
 	cWebem *m_pWebEm;
 
@@ -77,7 +78,19 @@ public:
 	void SetWebRoot(const std::string &webRoot);
 	std::vector<_tWebUserPassword> m_users;
 	//JSon
-	void GetJSonDevices(Json::Value &root, const std::string &rused, const std::string &rfilter, const std::string &order, const std::string &rowid, const std::string &planID, const std::string &floorID, const bool bDisplayHidden, const time_t LastUpdate, const std::string &username);
+	void GetJSonDevices(
+		Json::Value &root,
+		const std::string &rused,
+		const std::string &rfilter,
+		const std::string &order,
+		const std::string &rowid,
+		const std::string &planID,
+		const std::string &floorID,
+		const bool bDisplayHidden,
+		const bool bFetchFavorites,
+		const time_t LastUpdate,
+		const std::string &username,
+		const std::string &hardwareid = ""); // OTO
 
 	// SessionStore interface
 	const WebEmStoredSession GetSession(const std::string & sessionId);
@@ -141,6 +154,7 @@ private:
 	void Cmd_GetUserVariable(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_AllowNewHardware(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_GetLog(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_ClearLog(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_AddPlan(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_UpdatePlan(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_DeletePlan(WebEmSession & session, const request& req, Json::Value &root);
@@ -215,6 +229,11 @@ private:
 	void Cmd_GetHttpLinks(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_SaveHttpLink(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_DeleteHttpLink(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_SaveGooglePubSubLinkConfig(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_GetGooglePubSubLinkConfig(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_GetGooglePubSubLinks(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_SaveGooglePubSubLink(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_DeleteGooglePubSubLink(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_AddLogMessage(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_ClearShortLog(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_VacuumDatabase(WebEmSession & session, const request& req, Json::Value &root);
@@ -227,7 +246,16 @@ private:
 	void Cmd_PanasonicMediaCommand(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_AddMobileDevice(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_DeleteMobileDevice(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_HEOSSetMode(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_HEOSMediaCommand(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_AddYeeLight(WebEmSession & session, const request& req, Json::Value &root);
 
+	void Cmd_BleBoxSetMode(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_BleBoxGetNodes(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_BleBoxAddNode(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_BleBoxUpdateNode(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_BleBoxRemoveNode(WebEmSession & session, const request& req, Json::Value &root);
+	void Cmd_BleBoxClearNodes(WebEmSession & session, const request& req, Json::Value &root);
 
 	//RTypes
 	void RType_HandleGraph(WebEmSession & session, const request& req, Json::Value &root);
@@ -297,6 +325,7 @@ private:
 	void ZWaveCPSaveConfig(WebEmSession & session, const request& req, reply & rep);
 	void ZWaveCPGetTopo(WebEmSession & session, const request& req, reply & rep);
 	void ZWaveCPGetStats(WebEmSession & session, const request& req, reply & rep);
+	void ZWaveCPSetGroup(WebEmSession & session, const request& req, reply & rep);
 	void Cmd_ZWaveSetUserCodeEnrollmentMode(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_ZWaveGetNodeUserCodes(WebEmSession & session, const request& req, Json::Value &root);
 	void Cmd_ZWaveRemoveUserCode(WebEmSession & session, const request& req, Json::Value &root);
@@ -304,6 +333,9 @@ private:
 	//RTypes
 	void RType_OpenZWaveNodes(WebEmSession & session, const request& req, Json::Value &root);
 	int m_ZW_Hwidx;
+#endif
+#ifdef WITH_TELLDUSCORE
+    void Cmd_TellstickApplySettings(WebEmSession &session, const request &req, Json::Value &root);
 #endif
 	boost::shared_ptr<boost::thread> m_thread;
 

@@ -31,11 +31,12 @@ enum _eSwitchType
 
 enum _eMeterType
 {
-	MTYPE_ENERGY=0,
-	MTYPE_GAS,
-	MTYPE_WATER,
-    MTYPE_COUNTER,
-	MTYPE_ENERGY_GENERATED,
+	MTYPE_ENERGY=0,			//0
+	MTYPE_GAS,				//1
+	MTYPE_WATER,			//2
+    MTYPE_COUNTER,			//3
+	MTYPE_ENERGY_GENERATED,	//4
+	MTYPE_TIME,				//5
 	MTYPE_END
 };
 
@@ -96,7 +97,7 @@ enum _eHardwareTypes {
 	HTYPE_Wunderground,			//14
 	HTYPE_Dummy,				//15
 	HTYPE_PiFace,				//16
-	HTYPE_S0SmartMeter,			//17
+	HTYPE_S0SmartMeterUSB,		//17
 	HTYPE_OpenThermGateway,		//18
 	HTYPE_TeleinfoMeter,		//19
 	HTYPE_OpenThermGatewayTCP,	//20
@@ -104,7 +105,7 @@ enum _eHardwareTypes {
 	HTYPE_LimitlessLights,		//22
 	HTYPE_System,				//23
 	HTYPE_EnOceanESP2,			//24
-	HTYPE_ForecastIO,			//25
+	HTYPE_DarkSky,				//25
 	HTYPE_SolarEdgeTCP,			//26
 	HTYPE_SBFSpot,				//27
 	HTYPE_ICYTHERMOSTAT,		//28
@@ -153,8 +154,25 @@ enum _eHardwareTypes {
 	HTYPE_RaspberryHTU21D,		//71
 	HTYPE_AtagOne,				//72
 	HTYPE_Sterbox,				//73
-	HTYPE_HTTPPOLLER,					//74
-
+	HTYPE_HTTPPOLLER,			//74
+	HTYPE_FITBIT,				//75
+	HTYPE_RAVEn,	    		//76
+	HTYPE_S0SmartMeterTCP,		//77
+	HTYPE_DenkoviSmartdenLan,	//78
+	HTYPE_AccuWeather,			//79
+	HTYPE_Comm5Serial,          //80
+	HTYPE_Ec3kMeterTCP,			//81
+	HTYPE_BleBox,          		//82
+	HTYPE_OpenWeatherMap,  		//83
+	HTYPE_GoodweAPI,			//84
+	HTYPE_RaspberryTSL2561,		//85
+	HTYPE_Daikin,				//86
+	HTYPE_HEOS,					//87
+	HTYPE_MultiFun,				//88
+	HTYPE_ZIBLUEUSB,			//89
+	HTYPE_ZIBLUETCP,			//90
+	HTYPE_Yeelight,				//91
+	HTYPE_MySensorsMQTT,		//92
 	HTYPE_END
 };
 

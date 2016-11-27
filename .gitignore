@@ -10,8 +10,15 @@ Makefile
 CMakeFiles
 *.cmake
 *.a
+*.exp
+*.idb
+*.log
+*.obj
+*.pdb
+*.tlog
 CMakeCache.txt
 domoticz
+!scripts/logrotate/domoticz
 stdafx.h.gch
 .DS_Store
 .AppleDouble
