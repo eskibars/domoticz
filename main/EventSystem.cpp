@@ -482,7 +482,7 @@ void CEventSystem::GetCurrentMeasurementStates()
 			break;
 		case pTypeTEMP_HUM_BARO:
 			if (splitresults.size() < 5) {
-				_log.Log(LOG_ERROR, "TEMP_HUM_BARO missing values : ID=%" PRIu64 ", sValue=%s", sitem.ID, sitem.sValue.c_str());
+				_log.Log(LOG_ERROR, "EventSystem: TEMP_HUM_BARO missing values : ID=%" PRIu64 ", sValue=%s", sitem.ID, sitem.sValue.c_str());
 				continue;
 			}
 			temp = static_cast<float>(atof(splitresults[0].c_str()));
@@ -1493,7 +1493,8 @@ void CEventSystem::EvaluateBlockly(const std::string &reason, const uint64_t Dev
 					lua_Number ruleTrue = lua_tonumber(lua_state, -1);
 					if (ruleTrue != 0)
 					{
-						_log.Log(LOG_NORM, "EventSystem: Event triggered: %s", it->Name.c_str());
+						if (m_sql.m_bLogEventScriptTrigger)
+							_log.Log(LOG_NORM, "EventSystem: Event triggered: %s", it->Name.c_str());
 						parseBlocklyActions(it->Actions, it->Name, it->ID);
 					}
 				}
@@ -1548,7 +1549,8 @@ void CEventSystem::EvaluateBlockly(const std::string &reason, const uint64_t Dev
 
 					if (ruleTrue != 0)
 					{
-						_log.Log(LOG_NORM, "EventSystem: Event triggered: %s", it->Name.c_str());
+						if (m_sql.m_bLogEventScriptTrigger)
+							_log.Log(LOG_NORM, "EventSystem: Event triggered: %s", it->Name.c_str());
 						parseBlocklyActions(it->Actions, it->Name, it->ID);
 					}
 				}
@@ -1598,7 +1600,8 @@ void CEventSystem::EvaluateBlockly(const std::string &reason, const uint64_t Dev
 						lua_Number ruleTrue = lua_tonumber(lua_state, -1);
 						if (ruleTrue != 0)
 						{
-							_log.Log(LOG_NORM, "EventSystem: Event triggered: %s", it->Name.c_str());
+							if (m_sql.m_bLogEventScriptTrigger)
+								_log.Log(LOG_NORM, "EventSystem: Event triggered: %s", it->Name.c_str());
 							parseBlocklyActions(it->Actions, it->Name, it->ID);
 						}
 					}
@@ -1652,7 +1655,8 @@ void CEventSystem::EvaluateBlockly(const std::string &reason, const uint64_t Dev
 
 					if (ruleTrue != 0)
 					{
-						_log.Log(LOG_NORM, "EventSystem: Event triggered: %s", it->Name.c_str());
+						if (m_sql.m_bLogEventScriptTrigger)
+							_log.Log(LOG_NORM, "EventSystem: Event triggered: %s", it->Name.c_str());
 						parseBlocklyActions(it->Actions, it->Name, it->ID);
 					}
 				}
@@ -2389,6 +2393,54 @@ void CEventSystem::EvaluatePython(const std::string &reason, const std::string &
 }
 #endif // ENABLE_PYTHON
 
+void CEventSystem::exportDeviceStatesToLua(lua_State *lua_state)
+{
+	boost::shared_lock<boost::shared_mutex> devicestatesMutexLock2(m_devicestatesMutex);
+	lua_createtable(lua_state, (int)m_devicestates.size(), 0);
+	typedef std::map<uint64_t, _tDeviceStatus>::iterator it_type;
+	for (it_type iterator = m_devicestates.begin(); iterator != m_devicestates.end(); ++iterator)
+	{
+		_tDeviceStatus sitem = iterator->second;
+		lua_pushstring(lua_state, sitem.deviceName.c_str());
+		lua_pushstring(lua_state, sitem.nValueWording.c_str());
+		lua_rawset(lua_state, -3);
+	}
+	lua_setglobal(lua_state, "otherdevices");
+
+	lua_createtable(lua_state, (int)m_devicestates.size(), 0);
+	typedef std::map<uint64_t, _tDeviceStatus>::iterator it_type;
+	for (it_type iterator = m_devicestates.begin(); iterator != m_devicestates.end(); ++iterator)
+	{
+		_tDeviceStatus sitem = iterator->second;
+		lua_pushstring(lua_state, sitem.deviceName.c_str());
+		lua_pushstring(lua_state, sitem.lastUpdate.c_str());
+		lua_rawset(lua_state, -3);
+	}
+	lua_setglobal(lua_state, "otherdevices_lastupdate");
+
+	lua_createtable(lua_state, (int)m_devicestates.size(), 0);
+	typedef std::map<uint64_t, _tDeviceStatus>::iterator it_type;
+	for (it_type iterator = m_devicestates.begin(); iterator != m_devicestates.end(); ++iterator)
+	{
+		_tDeviceStatus sitem = iterator->second;
+		lua_pushstring(lua_state, sitem.deviceName.c_str());
+		lua_pushstring(lua_state, sitem.sValue.c_str());
+		lua_rawset(lua_state, -3);
+	}
+	lua_setglobal(lua_state, "otherdevices_svalues");
+	lua_createtable(lua_state, (int)m_devicestates.size(), 0);
+	typedef std::map<uint64_t, _tDeviceStatus>::iterator it_type;
+	for (it_type iterator = m_devicestates.begin(); iterator != m_devicestates.end(); ++iterator)
+	{
+		_tDeviceStatus sitem = iterator->second;
+		lua_pushstring(lua_state, sitem.deviceName.c_str());
+		lua_pushnumber(lua_state, (lua_Number)sitem.ID);
+		lua_rawset(lua_state, -3);
+	}
+	lua_setglobal(lua_state, "otherdevices_idx");
+	devicestatesMutexLock2.unlock();
+}
+
 void CEventSystem::EvaluateLua(const std::string &reason, const std::string &filename, const std::string &LuaString, const uint64_t varId)
 {
 	EvaluateLua(reason, filename, LuaString, 0, "", 0, "", "", varId);
@@ -2771,50 +2823,8 @@ void CEventSystem::EvaluateLua(const std::string &reason, const std::string &fil
 		}
 	}
 
-	boost::shared_lock<boost::shared_mutex> devicestatesMutexLock2(m_devicestatesMutex);
-	lua_createtable(lua_state, (int)m_devicestates.size(), 0);
-	typedef std::map<uint64_t, _tDeviceStatus>::iterator it_type;
-	for (it_type iterator = m_devicestates.begin(); iterator != m_devicestates.end(); ++iterator)
-	{
-		_tDeviceStatus sitem = iterator->second;
-		lua_pushstring(lua_state, sitem.deviceName.c_str());
-		lua_pushstring(lua_state, sitem.nValueWording.c_str());
-		lua_rawset(lua_state, -3);
-	}
-	lua_setglobal(lua_state, "otherdevices");
-
-	lua_createtable(lua_state, (int)m_devicestates.size(), 0);
-	typedef std::map<uint64_t, _tDeviceStatus>::iterator it_type;
-	for (it_type iterator = m_devicestates.begin(); iterator != m_devicestates.end(); ++iterator)
-	{
-		_tDeviceStatus sitem = iterator->second;
-		lua_pushstring(lua_state, sitem.deviceName.c_str());
-		lua_pushstring(lua_state, sitem.lastUpdate.c_str());
-		lua_rawset(lua_state, -3);
-	}
-	lua_setglobal(lua_state, "otherdevices_lastupdate");
-
-	lua_createtable(lua_state, (int)m_devicestates.size(), 0);
-	typedef std::map<uint64_t, _tDeviceStatus>::iterator it_type;
-	for (it_type iterator = m_devicestates.begin(); iterator != m_devicestates.end(); ++iterator)
-	{
-		_tDeviceStatus sitem = iterator->second;
-		lua_pushstring(lua_state, sitem.deviceName.c_str());
-		lua_pushstring(lua_state, sitem.sValue.c_str());
-		lua_rawset(lua_state, -3);
-	}
-	lua_setglobal(lua_state, "otherdevices_svalues");
-	lua_createtable(lua_state, (int)m_devicestates.size(), 0);
-	typedef std::map<uint64_t, _tDeviceStatus>::iterator it_type;
-	for (it_type iterator = m_devicestates.begin(); iterator != m_devicestates.end(); ++iterator)
-	{
-		_tDeviceStatus sitem = iterator->second;
-		lua_pushstring(lua_state, sitem.deviceName.c_str());
-		lua_pushnumber(lua_state, (lua_Number)sitem.ID);
-		lua_rawset(lua_state, -3);
-	}
-	lua_setglobal(lua_state, "otherdevices_idx");
-	devicestatesMutexLock2.unlock();
+	exportDeviceStatesToLua(lua_state);
+	
 	lua_createtable(lua_state, (int)m_uservariables.size(), 0);
 
 	typedef std::map<uint64_t, _tUserVariable>::iterator it_var;
@@ -2996,7 +3006,8 @@ void CEventSystem::luaThread(lua_State *lua_state, const std::string &filename)
 
 	if (scriptTrue)
 	{
-		_log.Log(LOG_STATUS, "EventSystem: Script event triggered: %s", filename.c_str());
+		if (m_sql.m_bLogEventScriptTrigger)
+			_log.Log(LOG_STATUS, "EventSystem: Script event triggered: %s", filename.c_str());
 	}
 
 	lua_close(lua_state);
@@ -3256,6 +3267,7 @@ void CEventSystem::UpdateDevice(const std::string &DevParams)
 		case pTypeChime:
 		case pTypeThermostat2:
 		case pTypeThermostat3:
+		case pTypeThermostat4:
 		case pTypeRemote:
 		case pTypeGeneralSwitch:
 		case pTypeHomeConfort:
@@ -3562,7 +3574,6 @@ std::string CEventSystem::nValueToWording(const unsigned char dType, const unsig
 	bool bHaveDimmer = false;
 	bool bHaveGroupCmd = false;
 	int maxDimLevel = 0;
-
 	GetLightStatus(dType, dSubType, switchtype,nValue, sValue, lstatus, llevel, bHaveDimmer, maxDimLevel, bHaveGroupCmd);
 /*
 	if (lstatus.find("Set Level") == 0)
@@ -3658,6 +3669,13 @@ std::string CEventSystem::nValueToWording(const unsigned char dType, const unsig
 	else if (lstatus == "")
 	{
 		lstatus = sValue;
+		//OJO if lstatus  is still empty we use nValue for lstatus. ss for conversion
+        	if (lstatus == "")
+        	{
+			std::stringstream ss;
+			ss << (unsigned int)nValue;
+           		lstatus = ss.str();
+        	}		
 	}
 	return lstatus;
 }
@@ -3839,8 +3857,8 @@ namespace http {
 			redirect_uri = root.toStyledString();
 			if (session.rights != 2)
 			{
-				//No admin user, and not allowed to be here
-				return;
+				session.reply_status = reply::forbidden;
+				return; //Only admin user allowed
 			}
 
 			std::string eventname = CURLEncode::URLDecode(request::findValue(&req, "name"));
