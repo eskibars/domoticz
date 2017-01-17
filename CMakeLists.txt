@@ -9,6 +9,9 @@ SET(DOMO_MIN_LIBBOOST_VERSION 105500)
 
 option(USE_BUILTIN_LUA "Use builtin lua library" YES)
 IF(USE_BUILTIN_LUA)
+  IF(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    add_definitions(-DLUA_USE_MACOSX)
+  ENDIF()
   add_subdirectory (lua)
   get_directory_property (LUA_LIBRARIES DIRECTORY lua
     DEFINITION LUA_LIBRARIES)
@@ -91,6 +94,20 @@ IF(HAVE_EXECINFO_H)
     ADD_DEFINITIONS(-DHAVE_EXECINFO_H)
   ENDIF()
 ENDIF(HAVE_EXECINFO_H)
+
+INCLUDE(CheckIncludeFiles)
+
+CHECK_INCLUDE_FILES ("sys/types.h;linux/i2c-dev.h;linux/i2c.h" HAVE_LINUX_I2C_H)
+IF (HAVE_LINUX_I2C_H)
+	message(STATUS "Building with I2C support")
+	add_definitions(-DHAVE_LINUX_I2C)
+ENDIF (HAVE_LINUX_I2C_H)
+
+CHECK_INCLUDE_FILES ("sys/types.h;linux/spi/spidev.h" HAVE_LINUX_SPI_H)
+IF (HAVE_LINUX_SPI_H)
+	message(STATUS "Building with SPI support")
+	add_definitions(-DHAVE_LINUX_SPI)
+ENDIF (HAVE_LINUX_SPI_H)
 
 #set(CMAKE_EXE_LINKER_FLAGS "-static")
 
