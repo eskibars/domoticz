@@ -75,17 +75,17 @@
     <Filter Include="Devices\OpenTherm-Gateway">
       <UniqueIdentifier>{9b834e19-65cb-442c-bfd7-c39e44279cb7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Devices\Teleinfo">
+    <Filter Include="Devices\TeleinfoSerial">
       <UniqueIdentifier>{9b098c6e-b49d-404b-b9a2-5904c1d92edd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Devices\TeleinfoBase">
+      <UniqueIdentifier>{9b098c6e-b49d-aaaa-b9a2-5904c1d92edd}</UniqueIdentifier>
     </Filter>
     <Filter Include="Devices\ZWave">
       <UniqueIdentifier>{8541fa16-1ca3-4b1c-8658-7075b91f73a8}</UniqueIdentifier>
     </Filter>
     <Filter Include="Devices\ZWave\Razberry-ZWave">
       <UniqueIdentifier>{3d63876c-62b2-4fbf-a50c-5132dcfbcb3b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Devices\ZWave\OpenZWave">
-      <UniqueIdentifier>{2eca1afb-1a1f-4158-ab8d-0616c1fbd279}</UniqueIdentifier>
     </Filter>
     <Filter Include="Devices\LimitlessLed">
       <UniqueIdentifier>{80714ac8-8783-4ef2-8836-3bb5b15adbb0}</UniqueIdentifier>
@@ -393,9 +393,6 @@
     <Filter Include="Devices\HttpPoller">
       <UniqueIdentifier>{efe2b02b-141c-473d-b168-fd06058fe9d2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Devices\Fitbit">
-      <UniqueIdentifier>{db856641-3bbc-455d-8a88-9955fb74e49e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Devices\Raven">
       <UniqueIdentifier>{0854a79e-fd9c-4b55-a9fd-93077f3bad23}</UniqueIdentifier>
     </Filter>
@@ -461,6 +458,18 @@
     </Filter>
     <Filter Include="Pushers\InfluxDB">
       <UniqueIdentifier>{2c9db333-1435-4a52-970c-2a53298e2689}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Devices\RelayNet">
+      <UniqueIdentifier>{9882d591-40c3-4d12-8c0a-af2d53d939ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Devices\SysfsGPIO">
+      <UniqueIdentifier>{301fceaa-95de-4168-b336-04cadc395ff6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Devices\RTL_433">
+      <UniqueIdentifier>{0e8b8072-43d4-44a2-b5de-8a4eb7887d1c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Devices\OnkyoAVTCP">
+      <UniqueIdentifier>{64b3714e-88ea-41cb-99ee-398abbc7acb1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -1495,8 +1504,11 @@
     <ClInclude Include="..\hardware\OTGWTCP.h">
       <Filter>Devices\OpenTherm-Gateway</Filter>
     </ClInclude>
-    <ClInclude Include="..\hardware\Teleinfo.h">
-      <Filter>Devices\Teleinfo</Filter>
+    <ClInclude Include="..\hardware\TeleinfoSerial.h">
+      <Filter>Devices\TeleinfoSerial</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\TeleinfoBase.h">
+      <Filter>Devices\TeleinfoBase</Filter>
     </ClInclude>
     <ClInclude Include="..\hardware\ZWaveBase.h">
       <Filter>Devices\ZWave</Filter>
@@ -1582,13 +1594,22 @@
     <ClInclude Include="..\hardware\SBFSpot.h">
       <Filter>Devices\SBFSpot</Filter>
     </ClInclude>
-    <ClInclude Include="..\hardware\PhilipsHue.h">
+    <ClInclude Include="..\hardware\PhilipsHue\PhilipsHue.h">
+      <Filter>Devices\Philips Hue</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\PhilipsHue\PhilipsHueSensors.h">
       <Filter>Devices\Philips Hue</Filter>
     </ClInclude>
     <ClInclude Include="..\hardware\openzwave\control_panel\ozwcp.h">
       <Filter>Devices\ZWave\Control Panel</Filter>
     </ClInclude>
-    <ClInclude Include="..\hardware\evohome.h">
+    <ClInclude Include="..\hardware\EvohomeBase.h">
+      <Filter>Devices\EvoHome</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\EvohomeSerial.h">
+      <Filter>Devices\EvoHome</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\EvohomeWeb.h">
       <Filter>Devices\EvoHome</Filter>
     </ClInclude>
     <ClInclude Include="..\zip\ioapi.h">
@@ -1670,6 +1691,9 @@
       <Filter>Devices\KMTronic</Filter>
     </ClInclude>
     <ClInclude Include="..\hardware\KMTronicTCP.h">
+      <Filter>Devices\KMTronic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\KMTronicUDP.h">
       <Filter>Devices\KMTronic</Filter>
     </ClInclude>
     <ClInclude Include="..\notifications\NotificationKodi.h">
@@ -1876,9 +1900,6 @@
     <ClInclude Include="..\hardware\RFXBase.h">
       <Filter>Devices\RFXCom</Filter>
     </ClInclude>
-    <ClInclude Include="..\hardware\Fitbit.h">
-      <Filter>Devices\Fitbit</Filter>
-    </ClInclude>
     <ClInclude Include="..\hardware\RAVEn.h">
       <Filter>Devices\Raven</Filter>
     </ClInclude>
@@ -1980,6 +2001,33 @@
     </ClInclude>
     <ClInclude Include="..\push\BasePush.h">
       <Filter>Pushers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\RelayNet.h">
+      <Filter>Devices\RelayNet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\plugins\PythonObjects.h">
+      <Filter>Devices\Python Plugins</Filter>
+    </ClInclude>
+    <ClInclude Include="..\main\LuaCommon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\SysfsGPIO.h">
+      <Filter>Devices\SysfsGPIO</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\EvohomeScript.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\Rtl433.h">
+      <Filter>Devices\RTL_433</Filter>
+    </ClInclude>
+    <ClInclude Include="..\main\EventsPythonDevice.h">
+      <Filter>EventSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\main\EventsPythonModule.h">
+      <Filter>EventSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\OnkyoAVTCP.h">
+      <Filter>Devices\OnkyoAVTCP</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -2142,8 +2190,11 @@
     <ClCompile Include="..\hardware\OTGWTCP.cpp">
       <Filter>Devices\OpenTherm-Gateway</Filter>
     </ClCompile>
-    <ClCompile Include="..\hardware\Teleinfo.cpp">
-      <Filter>Devices\Teleinfo</Filter>
+    <ClCompile Include="..\hardware\TeleinfoBase.cpp">
+      <Filter>Devices\TeleinfoBase</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\TeleinfoSerial.cpp">
+      <Filter>Devices\TeleinfoSerial</Filter>
     </ClCompile>
     <ClCompile Include="..\hardware\ZWaveBase.cpp">
       <Filter>Devices\ZWave</Filter>
@@ -2217,13 +2268,22 @@
     <ClCompile Include="..\hardware\SBFSpot.cpp">
       <Filter>Devices\SBFSpot</Filter>
     </ClCompile>
-    <ClCompile Include="..\hardware\PhilipsHue.cpp">
+    <ClCompile Include="..\hardware\PhilipsHue\PhilipsHue.cpp">
+      <Filter>Devices\Philips Hue</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\PhilipsHue\PhilipsHueSensors.cpp">
       <Filter>Devices\Philips Hue</Filter>
     </ClCompile>
     <ClCompile Include="..\hardware\openzwave\control_panel\ozwcp.cpp">
       <Filter>Devices\ZWave\Control Panel</Filter>
     </ClCompile>
-    <ClCompile Include="..\hardware\evohome.cpp">
+    <ClCompile Include="..\hardware\EvohomeBase.cpp">
+      <Filter>Devices\EvoHome</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\EvohomeSerial.cpp">
+      <Filter>Devices\EvoHome</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\EvohomeWeb.cpp">
       <Filter>Devices\EvoHome</Filter>
     </ClCompile>
     <ClCompile Include="..\hardware\MySensorsBase.cpp">
@@ -2287,6 +2347,9 @@
       <Filter>Devices\KMTronic</Filter>
     </ClCompile>
     <ClCompile Include="..\hardware\KMTronicTCP.cpp">
+      <Filter>Devices\KMTronic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\KMTronicUDP.cpp">
       <Filter>Devices\KMTronic</Filter>
     </ClCompile>
     <ClCompile Include="..\notifications\NotificationKodi.cpp">
@@ -2526,9 +2589,6 @@
     <ClCompile Include="..\hardware\RFXBase.cpp">
       <Filter>Devices\RFXCom</Filter>
     </ClCompile>
-    <ClCompile Include="..\hardware\Fitbit.cpp">
-      <Filter>Devices\Fitbit</Filter>
-    </ClCompile>
     <ClCompile Include="..\hardware\RAVEn.cpp">
       <Filter>Devices\Raven</Filter>
     </ClCompile>
@@ -2624,6 +2684,33 @@
     </ClCompile>
     <ClCompile Include="..\push\BasePush.cpp">
       <Filter>Pushers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\RelayNet.cpp">
+      <Filter>Devices\RelayNet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\plugins\PythonObjects.cpp">
+      <Filter>Devices\Python Plugins</Filter>
+    </ClCompile>
+    <ClCompile Include="..\main\LuaCommon.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\SysfsGPIO.cpp">
+      <Filter>Devices\SysfsGPIO</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\EvohomeScript.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\Rtl433.cpp">
+      <Filter>Devices\RTL_433</Filter>
+    </ClCompile>
+    <ClCompile Include="..\main\EventsPythonDevice.cpp">
+      <Filter>EventSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\main\EventsPythonModule.cpp">
+      <Filter>EventSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\OnkyoAVTCP.cpp">
+      <Filter>Devices\OnkyoAVTCP</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

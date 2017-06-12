@@ -3,7 +3,7 @@
 //
 //	Domoticz Plugin System - Dnpwwo, 2016
 //
-#ifdef USE_PYTHON_PLUGINS
+#ifdef ENABLE_PYTHON
 
 #include "PluginManager.h"
 #include "Plugins.h"
@@ -13,7 +13,6 @@
 #include "../main/Helper.h"
 #include "../main/Logger.h"
 #include "../main/SQLHelper.h"
-#include "../notifications/NotificationKodi.h"	// Use Kodi specific notifier because it has function to get the icon file name
 #include "../main/WebServer.h"
 #include "../main/mainworker.h"
 #include "../main/EventSystem.h"
@@ -27,6 +26,10 @@
 #endif
 
 #include "DelayedLink.h"
+
+#ifdef ENABLE_PYTHON
+#include "../../main/EventsPythonModule.h"
+#endif
 
 #define MINIMUM_PYTHON_VERSION "3.4.0"
 
@@ -54,8 +57,13 @@ namespace Plugins {
 
 	PyMODINIT_FUNC PyInit_Domoticz(void);
 
+#ifdef ENABLE_PYTHON
+    // Need forward decleration
+    // PyMODINIT_FUNC PyInit_DomoticzEvents(void);
+#endif // ENABLE_PYTHON
+
 	boost::mutex PluginMutex;	// controls accessto the message queue
-	std::queue<CPluginMessage>	PluginMessageQueue;
+	std::queue<CPluginMessageBase*>	PluginMessageQueue;
 	boost::asio::io_service ios;
 
 	std::map<int, CDomoticzHardwareBase*>	CPluginSystem::m_pPlugins;
@@ -118,8 +126,16 @@ namespace Plugins {
 				_log.Log(LOG_ERROR, "PluginSystem: Failed to append 'Domoticz' to the existing table of built-in modules.");
 				return false;
 			}
+#ifdef ENABLE_PYTHON
+            if (PyImport_AppendInittab("DomoticzEvents", PyInit_DomoticzEvents) == -1)
+			{
+				_log.Log(LOG_ERROR, "PluginSystem: Failed to append 'DomoticzEvents' to the existing table of built-in modules.");
+				return false;
+			}
+#endif //ENABLE_PYTHON
 
 			Py_Initialize();
+			m_InitialPythonThread = PyEval_SaveThread();
 
 			m_bEnabled = true;
 			_log.Log(LOG_STATUS, "PluginSystem: Started, Python version '%s'.", sVersion.c_str());
@@ -138,83 +154,61 @@ namespace Plugins {
 		//	Scan plugins folder and load XML plugin manifests
 		//
 		m_PluginXml.clear();
-		std::stringstream plugin_DirT;
+		std::string plugin_BaseDir;
 #ifdef WIN32
-		plugin_DirT << szUserDataFolder << "plugins\\";
-		std::string plugin_Dir = plugin_DirT.str();
-		if (!mkdir(plugin_Dir.c_str()))
-		{
-			_log.Log(LOG_NORM, "%s: Created directory %s", __func__, plugin_Dir.c_str());
-		}
+		plugin_BaseDir = szUserDataFolder + "plugins\\";
 #else
-		plugin_DirT << szUserDataFolder << "plugins/";
-		std::string plugin_Dir = plugin_DirT.str();
-		if (!mkdir(plugin_Dir.c_str(), 0755))
-		{
-			_log.Log(LOG_NORM, "BuildManifest: Created directory %s", plugin_Dir.c_str());
-		}
+		plugin_BaseDir = szUserDataFolder + "plugins/";
 #endif
+		if (!createdir(plugin_BaseDir.c_str(), 0755))
+		{
+			_log.Log(LOG_NORM, "%s: Created directory %s", __func__, plugin_BaseDir.c_str());
+		}
 
-		DIR *lDir;
-		struct dirent *ent;
-		if ((lDir = opendir(plugin_Dir.c_str())) != NULL)
+		std::vector<std::string> DirEntries, FileEntries;
+		std::vector<std::string>::const_iterator itt_Dir, itt_File;
+		std::string plugin_Dir, plugin_File;
+
+		DirectoryListing(DirEntries, plugin_BaseDir, true, false);
+		for (itt_Dir = DirEntries.begin(); itt_Dir != DirEntries.end(); ++itt_Dir)
 		{
-			while ((ent = readdir(lDir)) != NULL)
+			if (*itt_Dir != "examples")
 			{
-				std::string dirname = ent->d_name;
-				if ((dirent_is_directory(plugin_Dir, ent)) && (dirname.length() > 2) && (dirname != "examples"))
-				{
-					DIR *lDir;
-					struct dirent *ent;
 #ifdef WIN32
-					dirname = plugin_Dir + dirname + "\\";
+				plugin_Dir = plugin_BaseDir + *itt_Dir + "\\";
 #else
-					dirname = plugin_Dir + dirname + "/";
+				plugin_Dir = plugin_BaseDir + *itt_Dir + "/";
 #endif
-					if ((lDir = opendir(dirname.c_str())) != NULL)
+				DirectoryListing(FileEntries, plugin_Dir, false, true);
+				for (itt_File = FileEntries.begin(); itt_File != FileEntries.end(); ++itt_File)
+				{
+					if (*itt_File == "plugin.py")
 					{
-						while ((ent = readdir(lDir)) != NULL)
+						try
 						{
-							std::string filename = ent->d_name;
-							if (dirent_is_file(dirname, ent))
-							{
-								if (filename == "plugin.py")
-								{
-									try
-									{
-										std::string sXML;
-										std::stringstream	FileName;
-										FileName << dirname << filename;
-										std::string line;
-										std::ifstream readFile(FileName.str().c_str());
-										bool pluginFound = false;
-										while (getline(readFile, line)) {
-											if (!pluginFound && (line.find("<plugin") != std::string::npos))
-												pluginFound = true;
-											if (pluginFound)
-											{
-												sXML += line + "\n";
-											}
-											if (line.find("</plugin>") != std::string::npos)
-												break;
-										}
-										readFile.close();
-										m_PluginXml.insert(std::pair<std::string, std::string>(dirname, sXML));
-									}
-									catch (...)
-									{
-										_log.Log(LOG_ERROR, "%s: Exception loading plugin file: '%s'", __func__, filename.c_str());
-									}
-								}
+							std::string sXML;
+							plugin_File = plugin_Dir + *itt_File;
+							std::string line;
+							std::ifstream readFile(plugin_File.c_str());
+							bool bFound = false;
+							while (getline(readFile, line)) {
+								if (!bFound && (line.find("<plugin") != std::string::npos))
+									bFound = true;
+								if (bFound)
+									sXML += line + "\n";
+								if (line.find("</plugin>") != std::string::npos)
+									break;
 							}
+							readFile.close();
+							m_PluginXml.insert(std::pair<std::string, std::string>(plugin_Dir, sXML));
 						}
-						closedir(lDir);
-					}
-					else
-					{
-						_log.Log(LOG_ERROR, "%s: Error accessing plugins directory %s", __func__, plugin_Dir.c_str());
+						catch (...)
+						{
+							_log.Log(LOG_ERROR, "%s: Exception loading plugin file: '%s'", __func__, plugin_File.c_str());
+						}
 					}
 				}
+				FileEntries.clear();
 			}
 		}
 	}
@@ -263,7 +257,7 @@ namespace Plugins {
 				for (std::map<int, CDomoticzHardwareBase*>::iterator itt = m_pPlugins.begin(); itt != m_pPlugins.end(); itt++)
 				{
 					CPlugin*	pPlugin = (CPlugin*)itt->second;
-					if (pPlugin && pPlugin->m_pTransport && (pPlugin->m_pTransport->IsConnected()) && (pPlugin->m_pTransport->ThreadPoolRequired()))
+					if (pPlugin && pPlugin->IoThreadRequired())
 					{
 						bIos_required = true;
 						break;
@@ -282,16 +276,16 @@ namespace Plugins {
 			bool	bProcessed = true;
 			while (bProcessed)
 			{
-				CPluginMessage Message;
+				CPluginMessageBase* Message = NULL;
 				bProcessed = false;
 
 				// Cycle once through the queue looking for the 1st message that is ready to process
 				for (size_t i = 0; i < PluginMessageQueue.size(); i++)
 				{
 					boost::lock_guard<boost::mutex> l(PluginMutex);
-					CPluginMessage FrontMessage = PluginMessageQueue.front();
+					CPluginMessageBase* FrontMessage = PluginMessageQueue.front();
 					PluginMessageQueue.pop();
-					if (FrontMessage.m_When <= Now)
+					if (FrontMessage->m_When <= Now)
 					{
 						// Message is ready now or was already ready (this is the case for almost all messages)
 						Message = FrontMessage;
@@ -301,27 +295,20 @@ namespace Plugins {
 					PluginMessageQueue.push(FrontMessage);
 				}
 
-				if (Message.m_Type != PMT_NULL)
+				if (Message)
 				{
 					bProcessed = true;
-					if (!m_pPlugins.count(Message.m_HwdID))
+					try
 					{
-						_log.Log(LOG_ERROR, "PluginSystem: Unknown hardware in message: %d.", Message.m_HwdID);
+						Message->Process();
 					}
-					else
+					catch(...)
 					{
-						CPlugin*	pPlugin = (CPlugin*)m_pPlugins[Message.m_HwdID];
-						if (pPlugin)
-						{
-							pPlugin->HandleMessage(Message);
-						}
-						else
-						{
-							_log.Log(LOG_ERROR, "PluginSystem: Plugin for Hardware %d not found in Plugins map.", Message.m_HwdID);
-						}
-
+						_log.Log(LOG_ERROR, "PluginSystem: Exception processing message.");
 					}
 				}
+				// Free the memory for the message
+				if (Message) delete Message;
 			}
 			sleep_milliseconds(50);
 		}
@@ -340,12 +327,6 @@ namespace Plugins {
 			m_thread = NULL;
 		}
 
-		if (Py_LoadLibrary())
-		{
-			if (Py_IsInitialized()) {
-				Py_Finalize();
-			}
-		}
 		// Hardware should already be stopped to just flush the queue (should already be empty)
 		boost::lock_guard<boost::mutex> l(PluginMutex);
 		while (!PluginMessageQueue.empty())
@@ -355,45 +336,27 @@ namespace Plugins {
 
 		m_pPlugins.clear();
 
+		if (Py_LoadLibrary()  && m_InitialPythonThread)
+		{
+			if (Py_IsInitialized()) {
+				PyEval_RestoreThread((PyThreadState*)m_InitialPythonThread);
+				Py_Finalize();
+			}
+		}
+
 		_log.Log(LOG_STATUS, "PluginSystem: Stopped.");
 		return true;
 	}
 
-	void CPluginSystem::SendNotification(const std::string &Subject, const std::string &Text, const std::string &ExtraData, int Priority, const std::string &Sound)
+	void CPluginSystem::LoadSettings()
 	{
-		// ExtraData = |Name=Test|SwitchType=9|CustomImage=0|Status=On|
-
-		CNotificationKodi	Notifier;
-#ifdef WIN32
-		std::string	sIconFile = "..\\..\\" + Notifier.GetIconFile(ExtraData);
-#else
-		std::string	sIconFile = "../../" + Notifier.GetIconFile(ExtraData);
-#endif
-
-		std::string	sName = "Unknown";
-		int	posName = (int)ExtraData.find("|Name=");
-		if (posName >= 0)
-		{
-			posName += 6;
-			sName = ExtraData.substr(posName, ExtraData.find("|", posName) - posName);
-		}
-
-		std::string	sStatus = "Unknown";
-		int	posStatus = (int)ExtraData.find("|Status=");
-		if (posStatus >= 0)
-		{
-			posStatus += 8;
-			sStatus = ExtraData.substr(posStatus, ExtraData.find("|", posStatus) - posStatus);
-		}
-
-
 		//	Add command to message queue for every plugin
 		boost::lock_guard<boost::mutex> l(PluginMutex);
 		for (std::map<int, CDomoticzHardwareBase*>::iterator itt = m_pPlugins.begin(); itt != m_pPlugins.end(); itt++)
 		{
 			if (itt->second)
 			{
-				NotificationMessage	Message(itt->second->m_HwdID, Subject, Text, sName, sStatus, Priority, Sound, sIconFile);
+				SettingsDirective*	Message = new SettingsDirective((CPlugin*)itt->second);
 				PluginMessageQueue.push(Message);
 			}
 			else
@@ -418,7 +381,7 @@ namespace http {
 				XmlDoc.Parse(it_type->second.c_str());
 				if (XmlDoc.Error())
 				{
-					_log.Log(LOG_ERROR, "%s: Error '%s' at line %d column %d in XML '%s'.", __func__, XmlDoc.ErrorDesc(), XmlDoc.ErrorRow(), XmlDoc.ErrorCol(), it_type->second.c_str());
+					_log.Log(LOG_ERROR, "%s: Parsing '%s', '%s' at line %d column %d in XML '%s'.", __func__, it_type->first.c_str(), XmlDoc.ErrorDesc(), XmlDoc.ErrorRow(), XmlDoc.ErrorCol(), it_type->second.c_str());
 				}
 				else
 				{
@@ -479,7 +442,13 @@ namespace http {
 						}
 					}
 				}
-			}  
+			}
+		}
+
+		void CWebServer::PluginLoadConfig()
+		{
+			Plugins::CPluginSystem Plugins;
+			Plugins.LoadSettings();
 		}
 
 		std::string CWebServer::PluginHardwareDesc(int HwdID)

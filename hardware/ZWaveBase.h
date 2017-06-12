@@ -43,6 +43,10 @@ class ZWaveBase : public CDomoticzHardwareBase
 		ZDTYPE_SENSOR_TANK_CAPACITY,
 
 		ZDTYPE_ALARM,
+		ZDTYPE_CENTRAL_SCENE,
+
+		ZDTYPE_SENSOR_CUSTOM,
+
 	};
 	struct _tZWaveDevice
 	{
@@ -82,6 +86,7 @@ class ZWaveBase : public CDomoticzHardwareBase
 
 		//label
 		std::string label;
+		std::string custom_label;
 
 		time_t lastreceived;
 		unsigned char sequence_number;

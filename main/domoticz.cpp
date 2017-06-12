@@ -104,7 +104,8 @@ const char *szHelp=
 #else
 	"\t-log file_path (for example /var/log/domoticz.log)\n"
 #endif
-	"\t-loglevel (0=All, 1=Status+Error, 2=Error)\n"
+	"\t-loglevel (0=All, 1=Status+Error, 2=Error , 3= Trace )\n"
+	"\t-debug    allow log trace level 3 \n"
 	"\t-notimestamps (do not prepend timestamps to logs; useful with syslog, etc.)\n"
 	"\t-php_cgi_path (for example /usr/bin/php-cgi)\n"
 #ifndef WIN32
@@ -371,6 +372,87 @@ void daemonize(const char *rundir, const char *pidfile)
 		sysctl(mib, 4, pathName, &cb, NULL, 0);
 		return cb;
 	}
+#elif defined(__OpenBSD__)
+#include <sys/sysctl.h>
+static size_t getExecutablePathName(char* pathName, size_t pathNameCapacity)
+{
+        int mib[4];
+        char **argv;
+        size_t len = 0;
+        const char *comm;
+
+        mib[0] = CTL_KERN;
+        mib[1] = KERN_PROC_ARGS;
+        mib[2] = getpid();
+        mib[3] = KERN_PROC_ARGV;
+        pathName[0] = '\0';
+        if (sysctl(mib, 4, NULL, &len, NULL, 0) < 0)
+        {
+                return 0;
+        }
+
+        if (!(argv = (char**)malloc(len)))
+        {
+                return 0;
+        }
+
+        if (sysctl(mib, 4, argv, &len, NULL, 0) < 0)
+        {
+                len = 0;
+                goto finally;
+        }
+
+	        len = 0;
+        comm = argv[0];
+
+        if (*comm == '/' || *comm == '.')
+        {
+                // In OpenBSD PATH_MAX is 1024
+                char * fullPath = (char*) malloc(PATH_MAX);
+                if(!fullPath)
+                {
+                        goto finally;
+                }
+
+                if (realpath(comm, fullPath))
+                {
+                        if(pathNameCapacity > strnlen(fullPath, PATH_MAX))
+                        {
+                                strlcpy(pathName, fullPath, pathNameCapacity);
+                                len = strnlen(pathName, pathNameCapacity);
+                                free(fullPath);
+                        }
+                }
+        }
+        else
+        {
+                char *sp;
+                char *xpath = strdup(getenv("PATH"));
+                char *path = strtok_r(xpath, ":", &sp);
+                struct stat st;
+
+		if (!xpath)
+                {
+                        goto finally;
+                }
+
+                while (path)
+                {
+                        snprintf(pathName, pathNameCapacity, "%s/%s", path, comm);
+                        if (!stat(pathName, &st) && (st.st_mode & S_IXUSR))
+                        {
+                                break;
+                        }
+                        pathName[0] = '\0';
+                        path = strtok_r(NULL, ":", &sp);
+                }
+                free(xpath);
+        }
+
+  finally:
+        free(argv);
+        return len;
+}
 #elif defined(__APPLE__) /* elif of: #elif defined(__linux__) */
 	#include <mach-o/dyld.h>
 	static size_t getExecutablePathName(char* pathName, size_t pathNameCapacity)
@@ -456,8 +538,6 @@ int main(int argc, char**argv)
 			_log.Log(LOG_ERROR, "Please specify an output log file");
 			return 1;
 		}
-		logfile = cmdLine.GetSafeArgument("-log", 0, "domoticz.log");
-		_log.SetOutputFile(logfile.c_str());
 	}
 	if (cmdLine.HasSwitch("-loglevel"))
 	{
@@ -466,9 +546,19 @@ int main(int argc, char**argv)
 			_log.Log(LOG_ERROR, "Please specify logfile output level (0=All, 1=Status+Error, 2=Error)");
 			return 1;
 		}
-		int Level = atoi(cmdLine.GetSafeArgument("-loglevel", 0, "").c_str());
-		_log.SetVerboseLevel((_eLogFileVerboseLevel)Level);
 	}
+	if (cmdLine.HasSwitch("-verbose"))
+	{
+		if (cmdLine.GetArgumentCount("-verbose") != 1)
+		{
+			_log.Log(LOG_ERROR, "Please specify a verbose level");
+			return 1;
+		}
+	}
+	if (cmdLine.HasSwitch("-debug"))
+		_log.SetLogDebug(true);
+	else
+		_log.SetLogDebug(false);
 	if (cmdLine.HasSwitch("-notimestamps"))
 	{
 		_log.EnableLogTimestamps(false);
@@ -573,6 +663,15 @@ int main(int argc, char**argv)
 		szInternalCurrentCommand = "cat /sys/class/power_supply/ac/current_now | awk '{ printf (\"curr=%0.2f\\n\",$1/1000000); }'";
 		bHasInternalCurrent = true;
 	}
+#if defined (__OpenBSD__)
+
+	szInternalTemperatureCommand="sysctl hw.sensors.acpitz0.temp0|sed -e 's/.*temp0/temp/'|cut -d ' ' -f 1";
+	bHasInternalTemperature = true;
+	szInternalVoltageCommand = "sysctl hw.sensors.acpibat0.volt1|sed -e 's/.*volt1/volt/'|cut -d ' ' -f 1";
+	bHasInternalVoltage = true;
+	//bHasInternalCurrent = true;
+
+#endif
 	_log.Log(LOG_STATUS,"Startup Path: %s", szStartupFolder.c_str());
 #endif
 
@@ -628,6 +727,12 @@ int main(int argc, char**argv)
 			return 1;
 		}
 		std::string wwwport = cmdLine.GetSafeArgument("-www", 0, "");
+		int iPort = (int)atoi(wwwport.c_str());
+		if ((iPort < 0) || (iPort > 32767))
+		{
+			_log.Log(LOG_ERROR, "Please specify a valid www port");
+			return 1;
+		}
 		webserver_settings.listening_port = wwwport;
 	}
 
@@ -663,6 +768,12 @@ int main(int argc, char**argv)
 			return 1;
 		}
 		std::string wwwport = cmdLine.GetSafeArgument("-sslwww", 0, "");
+		int iPort = (int)atoi(wwwport.c_str());
+		if ((iPort < 0) || (iPort > 32767))
+		{
+			_log.Log(LOG_ERROR, "Please specify a valid sslwww port");
+			return 1;
+		}
 		secure_webserver_settings.listening_port = wwwport;
 	}
 	if (!webserver_settings.listening_address.empty()) {
@@ -795,16 +906,6 @@ int main(int argc, char**argv)
 			szWebRoot = szroot;
 	}
 
-	if (cmdLine.HasSwitch("-verbose"))
-	{
-		if (cmdLine.GetArgumentCount("-verbose") != 1)
-		{
-			_log.Log(LOG_ERROR, "Please specify a verbose level");
-			return 1;
-		}
-		int Level = atoi(cmdLine.GetSafeArgument("-verbose", 0, "").c_str());
-		m_mainworker.SetVerboseLevel((eVerboseLevel)Level);
-	}
 #if defined WIN32
 	if (cmdLine.HasSwitch("-nobrowser"))
 	{
@@ -903,6 +1004,28 @@ int main(int argc, char**argv)
 		return 1;
 	}
 	m_StartTime = time(NULL);
+
+  //set log level / log output file name verbose level if set on command line
+  //the value as been taken from database in call of GetLogPreference m_mainworker.Start()
+	if (cmdLine.HasSwitch("-log"))
+	{
+		logfile = cmdLine.GetSafeArgument("-log", 0, "domoticz.log");
+		_log.SetOutputFile(logfile.c_str());
+	}
+	if (cmdLine.HasSwitch("-loglevel"))
+	{
+		int Level = atoi(cmdLine.GetSafeArgument("-loglevel", 0, "").c_str());
+		if     (Level==0) _log.SetVerboseLevel(VBL_ALL);
+		else if(Level==1) _log.SetVerboseLevel(VBL_STATUS_ERROR);
+		else if(Level==2) _log.SetVerboseLevel(VBL_ERROR);
+		else if ((Level == 3) && (_log.GetLogDebug())) _log.SetVerboseLevel(VBL_TRACE);
+	}
+	if (cmdLine.HasSwitch("-verbose"))
+	{
+		int Level = atoi(cmdLine.GetSafeArgument("-verbose", 0, "").c_str());
+		m_mainworker.SetVerboseLevel((eVerboseLevel)Level);
+	}
+
 
 	/* now, lets get into an infinite loop of doing nothing. */
 #if defined WIN32

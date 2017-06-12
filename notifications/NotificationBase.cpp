@@ -117,6 +117,7 @@ bool CNotificationBase::SendMessageEx(
 		fText = CURLEncode::URLEncode(fText);
 	}
 
+	boost::mutex::scoped_lock SendMessageEx(SendMessageExMutex);
 	bool bRet = SendMessageImplementation(Idx, Name, fSubject, fText, ExtraData, Priority, Sound, bFromNotification);
 	if (bRet) {
 		_log.Log(LOG_NORM, std::string(std::string("Notification sent (") + _subsystemid + std::string(") => Success")).c_str());
@@ -239,15 +240,3 @@ bool CNotificationBase::IsInConfigBase64(const std::string &Key)
 	return false;
 }
 
-std::string CNotificationBase::MakeHtml(const std::string &txt)
-{
-	std::string sRet = txt;
-
-	stdreplace(sRet, "&", "&amp;");
-	stdreplace(sRet, "\"", "&quot;");
-	stdreplace(sRet, "'", "&apos;");
-	stdreplace(sRet, "<", "&lt;");
-	stdreplace(sRet, ">", "&gt;");
-	stdreplace(sRet, "\r\n", "<br/>");
-	return sRet;
-}
