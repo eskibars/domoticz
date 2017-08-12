@@ -10,11 +10,12 @@ local LOG_INFO = 2
 local LOG_DEBUG = 3
 local LOG_ERROR = 1
 
-local xVar = 9
-local yVar = 10
-local zVar = 11
-local aVar = 12
-local bVar = 13
+local xVar = 11
+local yVar = 12
+local zVar = 13
+local aVar = 14
+local bVar = 15
+local spacedVar = 16
 
 describe('variables', function()
 	local Variable
@@ -40,6 +41,10 @@ describe('variables', function()
 
 	end)
 
+	before_each(function()
+		commandArray = {}
+	end)
+
 	teardown(function()
 		Variable = nil
 	end)
@@ -62,11 +67,39 @@ describe('variables', function()
 		assert.is_same('number', type(var.nValue))
 	end)
 
-	it('should set a new value', function()
+	it('should set a new float value', function()
 		local var = Variable(domoticz, testData.domoticzData[yVar])
-		var.set('dzVents rocks')
+		var.set(12.5)
 		assert.is_same(1, _.size(commandArray))
-		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=y&vtype=float&vvalue=dzVents rocks' }, commandArray[1])
+		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=y&vtype=1&vvalue=12.5&idx=2' }, commandArray[1])
+	end)
+
+	it('should set a new integer value', function()
+		local var = Variable(domoticz, testData.domoticzData[xVar])
+		var.set(12)
+		assert.is_same(1, _.size(commandArray))
+		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=x&vtype=0&vvalue=12&idx=1' }, commandArray[1])
+	end)
+
+	it('should set a new string value', function()
+		local var = Variable(domoticz, testData.domoticzData[zVar])
+		var.set('dzVents')
+		assert.is_same(1, _.size(commandArray))
+		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=z&vtype=2&vvalue=dzVents&idx=3' }, commandArray[1])
+	end)
+
+	it('should set a new date value', function()
+		local var = Variable(domoticz, testData.domoticzData[aVar])
+		var.set('12/12/2012')
+		assert.is_same(1, _.size(commandArray))
+		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=a&vtype=3&vvalue=12/12/2012&idx=4' }, commandArray[1])
+	end)
+
+	it('should set a new time value', function()
+		local var = Variable(domoticz, testData.domoticzData[bVar])
+		var.set('12:34')
+		assert.is_same(1, _.size(commandArray))
+		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=b&vtype=4&vvalue=12:34&idx=5' }, commandArray[1])
 	end)
 
 	it('should not fail when trying to cast a string', function()
@@ -96,4 +129,10 @@ describe('variables', function()
 		assert.is_same(34, var.time.min)
 	end)
 
+	it('should urlencode properly', function()
+		local var = Variable(domoticz, testData.domoticzData[spacedVar])
+		var.set('dzVents with spaces')
+		assert.is_same(1, _.size(commandArray))
+		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=var+with+spaces&vtype=2&vvalue=dzVents+with+spaces&idx=6' }, commandArray[1])
+	end)
 end)

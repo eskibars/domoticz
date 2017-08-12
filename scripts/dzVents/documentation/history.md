@@ -1,5 +1,43 @@
+[2.2.0]
 
- [2.0.0] Domoticz integration
+ - Fixed typo in the doc WActual > WhActual.
+ - Updated switch adapter to match more switch-like devices.
+ - Added Z-Wave Thermostat mode device adapter.
+ - Fixed a problem with thermostat setpoint devices to issue the proper url when updating.
+ - Added secondsSinceMidnight to time attributes (e.g. lastUpdate.secondsSinceMidnight)
+ - Added 4 new time-rules: xx minutes before/after sunset/sunrise.
+ - Added example script to fake user presence.
+ - Fixed support for uservariables with spaces in their names.
+ - Show a warning when an item's name isn't unique in the collection.
+ - Added timing options for security methods armAway, armHome and disarm like device.armAway().afterSec(10).
+ - Added idx, deviceId and unit to device objects. Don't confuse deviceId with device.id(x) which is actually the index of the device.
+ - Added instructions on how to create a security panel device in Domoticz. This device now has a state that has the same value as domoticz.security.
+ - Fixed bug in check battery levels example.
+ - Fixed some irregularities with dimmer levels.
+
+[2.1.0]
+
+ - Added support for switching RGB(W) devices (including Philips/Hue) to have toggleSwitch(), switchOn() and switchOff() and a proper level attribute.
+ - Added support for Ampère 1 and 3-phase devices
+ - Added support for leaf wetness devices
+ - Added support for scale weight devices
+ - Added support for soil moisture devices
+ - Added support for sound level devices
+ - Added support for visibility devices
+ - Added support for waterflow devices
+ - Added missing color attribute to alert sensor devices
+ - Added updateEnergy() to electric usage devices
+ - Fixed casing for WhTotal, WhActual methods on kWh devices (Watt's in a name?)
+ - Added toCelsius() helper method to domoticz object as the various update temperature methods all need celsius.
+ - Added lastLevel for dimmers so you can see the level of the dimmer just before it was switched off (and while is it still on).
+ - Added integration tests for full round-trip Domoticz > dzVents > Domoticz > dzVents tests (100 tests). Total tests (unit+integration) now counts 395!
+ - Fixed setting uservariables. It still uses json calls to update the variable in Domoticz otherwise you won't get uservariable event scripts triggered in dzVents.
+ - Added dzVents version information in the Domoticz settings page for easy checking what dzVents version is being used in your Domoticz built. Eventhough it is integrated with Domoticz, it is handy for dzVents to have it's own heartbeat.
+ - avg(), avgSince(), sum() and sumSince() now return 0 instead of nil for empty history sets. Makes more sense.
+ - Fixed boiler example to fallback to the current temperature when there is no history data yet when it calculates the average temperature.
+ - Use different api command for setting setPoints in the Thermostat setpoint device adapter.
+
+[2.0.0] Domoticz integration
 
  - Almost a complete rewrite.
  - **BREAKING CHANGE**: Accessing a device, scene, group, variable, changedDevice, or changedVariable has been changed: instead of doing `domoticz.devices['myDevice']` you now have to call a function: `domoticz.devices('myDevice')`. This applies also for the other collections: `domoticz.scenes(), domoticz.groups(), domoticz.changedDevices(), domoticz.changedVariables()`. If you want to loop over these collection **you can no longer use the standard Lua for..pairs or for..ipairs construct**. You have to use the iterators like forEach, filter and reduce: `domoticz.devices().forEach(function() .. end)` (see [Iterators](#Iterators)). This was a necessary change to make dzVents a whole lot faster in processing your event scripts. **So please change your existing dzVents scripts!**
@@ -127,4 +165,4 @@
 [0.9.7]
 
  - Added domoticz object resource structure. Updated readme accordingly. No more (or hardly any) need for juggling with all the Domoticz Lua tables and commandArrays.
- 
+

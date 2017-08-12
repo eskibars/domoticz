@@ -25,7 +25,15 @@ local function Domoticz(settings)
 		now = os.date('*t')
 		sNow = now.year .. '-' .. now.month .. '-' .. now.day .. ' ' .. now.hour .. ':' .. now.min .. ':' .. now.sec
 	end
+
 	local nowTime = Time(sNow)
+
+	-- check if the user set a lat/lng
+	-- if not, then daytime, nighttime is incorrect
+	if (_G.timeofday['SunriseInMinutes'] == 0 and _G.timeofday['SunsetInMinutes'] == 0) then
+		utils.log('No information about sunrise and sunset available. Please set lat/lng information in settings.', utils.LOG_ERROR)
+	end
+
 	nowTime['isDayTime'] = timeofday['Daytime']
 	nowTime['isNightTime'] = timeofday['Nighttime']
 	nowTime['sunriseInMinutes'] = timeofday['SunriseInMinutes']
@@ -216,6 +224,13 @@ local function Domoticz(settings)
 		end
 	end
 
+	function self.toCelsius(f, relative)
+		if (relative) then
+			return f*(1/1.8)
+		end
+		return ((f-32) / 1.8)
+	end
+
 	-- doesn't seem to work well for some weird reasone
 	function self.logDevice(device)
 		dumpTable(device, '> ')
@@ -228,18 +243,27 @@ local function Domoticz(settings)
 
 	function getItemFromData(baseType, id)
 
+		local res
+
 		for index, item in pairs(_G.domoticzData) do
-			if (item.baseType == baseType and (item.id == id or item.name == id)) then
-				return item
+			if (item.baseType == baseType) then
+				if (item.id == id or item.name == id) then
+					if (res == nil) then
+						res = item
+					else
+						utils.log('Multiple items found for ' .. tostring(id) .. ' (' .. tostring(baseType) .. '). Please make sure your names are unique or use ids instead.', utils.LOG_ERROR)
+					end
+				end
 			end
 		end
 
-		return nil
+		return res
 	end
 
 	function getObject(baseType, id, data)
 		local cache
 		local constructor
+
 		if (baseType == 'device') then
 			cache = self.__devices
 			constructor = Device
@@ -274,7 +298,15 @@ local function Domoticz(settings)
 			return newItem
 		end
 
-		utils.log('There is no ' .. baseType .. ' with that name or id: ' .. id, utils.LOG_ERROR)
+		-- special case for scenes and groups
+		-- as they may not be in the collection if Domoticz wasn't restarted after creating the scene or group.
+		if (baseType == 'scene' or baseType == 'group') then
+			utils.log('There is no group or scene with that name or id: ' ..
+					tostring(id) ..
+					'. If you just created the scene or group you may have to restart Domoticz to make it become visible to dzVents.', utils.LOG_ERROR)
+		else
+			utils.log('There is no ' .. baseType .. ' with that name or id: ' .. tostring(id), utils.LOG_ERROR)
+		end
 
 	end
 
@@ -337,7 +369,7 @@ local function Domoticz(settings)
 				end
 			end
 		end
-	
+
 		collection['reduce'] = function(func, accumulator)
 			for i, item in pairs(_collection) do
 
